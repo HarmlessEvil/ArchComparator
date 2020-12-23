@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_multiple_files = true;
+
+package ru.itmo.chori.archcomparator;
+
+message Message {
+  repeated int32 data = 1;
+}
