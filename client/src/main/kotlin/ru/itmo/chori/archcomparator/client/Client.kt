@@ -2,6 +2,9 @@ package ru.itmo.chori.archcomparator.client
 
 import ru.itmo.chori.archcomparator.Message
 import ru.itmo.chori.archcomparator.SERVER_PORT
+import java.io.ByteArrayOutputStream
+import java.io.DataInputStream
+import java.io.DataOutputStream
 import java.net.InetAddress
 import java.net.Socket
 import java.time.Duration
@@ -15,14 +18,23 @@ import kotlin.random.Random
 fun runClient(dataSize: Int, delayBeforeNextMessage: Duration, messageCount: Int) {
     Socket(InetAddress.getLocalHost(), SERVER_PORT).use { socket ->
         val inputStream = socket.getInputStream()
+        val dataInputStream = DataInputStream(inputStream)
+
         val outputStream = socket.getOutputStream()
+        val dataOutputStream = DataOutputStream(outputStream)
 
         for (i in 1..messageCount) {
             val data = List(dataSize) { Random.nextInt() }
             val message = Message.newBuilder().addAllData(data).build()
-            message.writeDelimitedTo(outputStream)
+            val byteArrayOutputStream = ByteArrayOutputStream()
+            message.writeDelimitedTo(byteArrayOutputStream)
 
+            dataOutputStream.writeInt(byteArrayOutputStream.size())
+            dataOutputStream.write(byteArrayOutputStream.toByteArray())
+
+            dataInputStream.readInt() // Reads and discards message size
             Message.parseDelimitedFrom(inputStream)
+
             Thread.sleep(delayBeforeNextMessage.toMillis())
         }
     }

@@ -2,8 +2,7 @@ package ru.itmo.chori.archcomparator.server
 
 import ru.itmo.chori.archcomparator.Message
 import ru.itmo.chori.archcomparator.SERVER_PORT
-import java.io.Closeable
-import java.io.EOFException
+import java.io.*
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
@@ -17,7 +16,7 @@ class ManyThreadedServer : Closeable {
     private var isRunning = true
 
     private val serverSocket = ServerSocket(SERVER_PORT)
-    private val acceptor: Thread = thread {
+    private val acceptor = thread {
         while (isRunning) {
             try {
                 acceptConnection(serverSocket.accept())
@@ -33,11 +32,12 @@ class ManyThreadedServer : Closeable {
                 val sender = Executors.newSingleThreadExecutor()
                 socket.use { socket ->
                     val inputStream = socket.getInputStream()
+                    val dataInputStream = DataInputStream(inputStream)
 
                     while (isRunning) {
                         try {
-                            // parseDelimitedFrom may return null after attempt to read from closed stream
-                            val message = Message.parseDelimitedFrom(inputStream) ?: break
+                            dataInputStream.readInt()
+                            val message = Message.parseDelimitedFrom(inputStream)
 
                             threadPool.submit {
                                 val data = task(message.dataList)
@@ -60,7 +60,12 @@ class ManyThreadedServer : Closeable {
 
     private fun sendResponse(socket: Socket, message: Message) {
         val outputStream = socket.getOutputStream()
-        message.writeDelimitedTo(outputStream)
+        val dataOutputStream = DataOutputStream(outputStream)
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        message.writeDelimitedTo(byteArrayOutputStream)
+
+        dataOutputStream.writeInt(byteArrayOutputStream.size())
+        dataOutputStream.write(byteArrayOutputStream.toByteArray())
     }
 
     /**
