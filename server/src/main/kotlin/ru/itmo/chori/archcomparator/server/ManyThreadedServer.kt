@@ -28,33 +28,27 @@ class ManyThreadedServer : Closeable {
 
     private fun acceptConnection(socket: Socket) {
         thread {
-            try {
-                val sender = Executors.newSingleThreadExecutor()
-                socket.use { socket ->
-                    val inputStream = socket.getInputStream()
-                    val dataInputStream = DataInputStream(inputStream)
+            val sender = Executors.newSingleThreadExecutor()
+            socket.use { socket ->
+                val inputStream = socket.getInputStream()
+                val dataInputStream = DataInputStream(inputStream)
 
-                    while (isRunning) {
-                        try {
-                            dataInputStream.readInt()
-                            val message = Message.parseDelimitedFrom(inputStream)
+                while (isRunning) {
+                    try {
+                        dataInputStream.readInt()
+                        val message = Message.parseDelimitedFrom(inputStream)
 
-                            threadPool.submit {
-                                val data = task(message.dataList)
-                                sender.submit { sendResponse(socket, Message.newBuilder().addAllData(data).build()) }
-                            }
-                        } catch (e: EOFException) { // will throw if all data consumed and client disconnected
-                            break
+                        threadPool.submit {
+                            val data = task(message.dataList)
+                            sender.submit { sendResponse(socket, Message.newBuilder().addAllData(data).build()) }
                         }
+                    } catch (e: EOFException) { // will throw if all data consumed and client disconnected
+                        break
                     }
                 }
-
-                sender.shutdown()
-            } catch (e: Exception) {
-                e.printStackTrace()
-
-                isRunning = false
             }
+
+            sender.shutdown()
         }
     }
 
