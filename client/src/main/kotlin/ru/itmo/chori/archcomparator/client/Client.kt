@@ -9,6 +9,7 @@ import java.net.InetAddress
 import java.net.Socket
 import java.time.Duration
 import kotlin.random.Random
+import kotlin.system.measureTimeMillis
 
 // N is dataSize
 // 𝚫 is delayBeforeNextMessage
@@ -34,6 +35,14 @@ fun runClient(dataSize: Int, delayBeforeNextMessage: Duration, messageCount: Int
     }
 }
 
+fun runClientAndMeasureTime(dataSize: Int, delayBeforeNextMessage: Duration, messageCount: Int): Duration {
+    val totalTime = measureTimeMillis {
+        runClient(dataSize, delayBeforeNextMessage, messageCount)
+    }
+
+    return Duration.ofMillis(totalTime / messageCount)
+}
+
 fun main() {
-    runClient(100, Duration.ofMillis(100), 10)
+    println(runClientAndMeasureTime(100, Duration.ofMillis(100), 10))
 }
