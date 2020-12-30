@@ -8,12 +8,14 @@ import java.io.Closeable
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.*
+import java.time.Duration
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import kotlin.concurrent.thread
+import kotlin.system.measureTimeMillis
 
-class NonBlockingServer : Closeable {
-    private class Attachment {
+class NonBlockingServer : Server {
+    private class Attachment(val clientId: Long) {
         enum class State {
             ReadingSize,
             ReadingMessage
@@ -39,12 +41,13 @@ class NonBlockingServer : Closeable {
     private val writeSelector = Selector.open()
 
     private val acceptor = thread {
+        var id: Long = 0
         while (isRunning) {
             try {
                 serverSocketChannel.accept().also {
                     it.configureBlocking(false)
 
-                    val attachment = Attachment()
+                    val attachment = Attachment(id++)
                     it.register(readSelector, SelectionKey.OP_READ, attachment)
                     readSelector.wakeup()
 
@@ -56,6 +59,9 @@ class NonBlockingServer : Closeable {
             }
         }
     }
+
+    override val tasksTime: MutableMap<Long, MutableList<Duration>> = emptyMap<Long, MutableList<Duration>>()
+        .toMutableMap()
 
     private val reader = thread {
         while (isRunning) {
@@ -70,38 +76,53 @@ class NonBlockingServer : Closeable {
                             val bytesRead = channel.read(attachment.sizeBuffer)
                             if (bytesRead == -1) {
                                 channel.close() // Should be enough: https://stackoverflow.com/a/24576864/12411158
-                            } else if (!attachment.sizeBuffer.hasRemaining()) { // All Int.SIZE_BYTES are read
-                                attachment.state = Attachment.State.ReadingMessage
-
-                                attachment.sizeBuffer.flip()
-                                attachment.buffer = ByteBuffer.allocate(attachment.sizeBuffer.int)
+                                return@select
                             }
+
+                            if (attachment.sizeBuffer.hasRemaining()) {
+                                return@select
+                            }
+
+                            attachment.state = Attachment.State.ReadingMessage
+
+                            attachment.sizeBuffer.flip()
+                            attachment.buffer = ByteBuffer.allocate(attachment.sizeBuffer.int)
                         }
 
                         Attachment.State.ReadingMessage -> {
                             val bytesRead = channel.read(attachment.buffer)
                             if (bytesRead == -1) {
                                 channel.close()
-                            } else if (!attachment.buffer.hasRemaining()) { // Message completely read
-                                attachment.buffer.flip()
+                                return@select
+                            }
 
-                                val inputMessageBytes = ByteArray(attachment.buffer.remaining()) // == size
-                                attachment.buffer.get(inputMessageBytes)
+                            if (attachment.buffer.hasRemaining()) {
+                                return@select
+                            }
 
-                                val byteArrayInputStream = ByteArrayInputStream(inputMessageBytes)
-                                val inputMessage = Message.parseFrom(byteArrayInputStream)
+                            attachment.buffer.flip()
 
-                                threadPool.submit {
-                                    val data = task(inputMessage.dataList)
-                                    val outputMessage = Message.newBuilder().addAllData(data).build()
+                            val inputMessageBytes = ByteArray(attachment.buffer.remaining()) // == size
+                            attachment.buffer.get(inputMessageBytes)
 
-                                    attachment.queue.add(outputMessage.toByteBuffer())
+                            val byteArrayInputStream = ByteArrayInputStream(inputMessageBytes)
+                            val inputMessage = Message.parseFrom(byteArrayInputStream)
+
+                            threadPool.submit {
+                                val data: List<Int>
+                                val taskTime = measureTimeMillis {
+                                    data = task(inputMessage.dataList)
                                 }
 
-                                attachment.sizeBuffer.clear()
-                                attachment.buffer.clear()
-                                attachment.state = Attachment.State.ReadingSize
+                                storeTaskTimeForClient(attachment.clientId, Duration.ofMillis(taskTime))
+                                val outputMessage = Message.newBuilder().addAllData(data).build()
+
+                                attachment.queue.add(outputMessage.toByteBuffer())
                             }
+
+                            attachment.sizeBuffer.clear()
+                            attachment.buffer.clear()
+                            attachment.state = Attachment.State.ReadingSize
                         }
                     }
                 }
@@ -118,14 +139,14 @@ class NonBlockingServer : Closeable {
                     val channel = key.channel() as SocketChannel
                     val attachment = key.attachment() as Attachment
 
-                    val buffer = attachment.queue.peek()
-                    if (buffer != null) {
-                        channel.write(buffer)
+                    val buffer = attachment.queue.peek() ?: return@select
+                    channel.write(buffer)
 
-                        if (!buffer.hasRemaining()) {
-                            attachment.queue.poll()
-                        }
+                    if (buffer.hasRemaining()) {
+                        return@select
                     }
+
+                    attachment.queue.poll()
                 }
             } catch (e: ClosedSelectorException) {
                 break
@@ -150,10 +171,13 @@ class NonBlockingServer : Closeable {
 }
 
 fun main() {
-    NonBlockingServer().use {
+    val server = NonBlockingServer()
+    server.use {
         println("Accepting connections on localhost:$SERVER_PORT")
         println("Press ENTER to stop")
 
         readLine()
     }
+
+    println(server.tasksTime)
 }

@@ -4,19 +4,20 @@ import ru.itmo.chori.archcomparator.Message
 import ru.itmo.chori.archcomparator.SERVER_PORT
 import ru.itmo.chori.archcomparator.toByteBuffer
 import java.io.ByteArrayInputStream
-import java.io.Closeable
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousCloseException
 import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.CompletionHandler
+import java.time.Duration
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import kotlin.concurrent.thread
+import kotlin.system.measureTimeMillis
 
-class AsynchronousServer : Closeable {
-    private class Attachment {
+class AsynchronousServer : Server {
+    private class Attachment(val clientId: Long) {
         val sizeBuffer: ByteBuffer = ByteBuffer.allocate(Int.SIZE_BYTES)
         lateinit var buffer: ByteBuffer
     }
@@ -30,11 +31,12 @@ class AsynchronousServer : Closeable {
     }
 
     private val acceptor = thread {
+        var id: Long = 0
         while (isRunning) {
             val future = serverSocketChannel.accept()
             try {
                 val connection = future.get()
-                readMessageHeader(connection, Attachment())
+                readMessageHeader(connection, Attachment(id++))
             } catch (e: ExecutionException) {
                 if (e.cause is AsynchronousCloseException) {
                     break // isRunning will be false according to #close method
@@ -67,6 +69,9 @@ class AsynchronousServer : Closeable {
         })
     }
 
+    override val tasksTime: MutableMap<Long, MutableList<Duration>> = emptyMap<Long, MutableList<Duration>>()
+        .toMutableMap()
+
     private fun readMessageBody(socketChannel: AsynchronousSocketChannel, attachment: Attachment) {
         socketChannel.read(attachment.buffer, attachment, object : CompletionHandler<Int, Attachment> {
             override fun completed(bytesRead: Int, attachment: Attachment) {
@@ -87,10 +92,15 @@ class AsynchronousServer : Closeable {
                 val inputMessage = Message.parseFrom(byteArrayInputStream)
 
                 threadPool.submit {
-                    val data = task(inputMessage.dataList)
+                    val data: List<Int>
+                    val taskTime = measureTimeMillis {
+                        data = task(inputMessage.dataList)
+                    }
+
+                    storeTaskTimeForClient(attachment.clientId, Duration.ofMillis(taskTime))
                     val outputMessage = Message.newBuilder().addAllData(data).build()
 
-                    sendResponse(socketChannel, outputMessage.toByteBuffer())
+                    sendResponse(socketChannel, outputMessage.toByteBuffer(), attachment.clientId)
                 }
             }
 
@@ -100,10 +110,10 @@ class AsynchronousServer : Closeable {
         })
     }
 
-    private fun sendResponse(socketChannel: AsynchronousSocketChannel, buffer: ByteBuffer) {
+    private fun sendResponse(socketChannel: AsynchronousSocketChannel, buffer: ByteBuffer, clientId: Long) {
         socketChannel.write(buffer, null, object : CompletionHandler<Int, Nothing?> {
             override fun completed(result: Int, attachment: Nothing?) {
-                readMessageHeader(socketChannel, Attachment())
+                readMessageHeader(socketChannel, Attachment(clientId))
             }
 
             override fun failed(exc: Throwable, attachment: Nothing?) {
@@ -123,10 +133,13 @@ class AsynchronousServer : Closeable {
 }
 
 fun main() {
-    AsynchronousServer().use {
+    val server = AsynchronousServer()
+    server.use {
         println("Accepting connections on localhost:$SERVER_PORT")
         println("Press ENTER to stop")
 
         readLine()
     }
+
+    println(server.tasksTime)
 }
