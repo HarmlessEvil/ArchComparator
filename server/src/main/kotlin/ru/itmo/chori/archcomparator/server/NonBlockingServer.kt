@@ -2,8 +2,8 @@ package ru.itmo.chori.archcomparator.server
 
 import ru.itmo.chori.archcomparator.Message
 import ru.itmo.chori.archcomparator.SERVER_PORT
+import ru.itmo.chori.archcomparator.toByteBuffer
 import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.Closeable
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -93,18 +93,9 @@ class NonBlockingServer : Closeable {
 
                                 threadPool.submit {
                                     val data = task(inputMessage.dataList)
-
                                     val outputMessage = Message.newBuilder().addAllData(data).build()
-                                    val byteArrayOutputStream = ByteArrayOutputStream()
-                                    outputMessage.writeTo(byteArrayOutputStream)
 
-                                    val buffer = ByteBuffer
-                                        .allocate(Int.SIZE_BYTES + byteArrayOutputStream.size())
-                                        .putInt(byteArrayOutputStream.size())
-                                        .put(byteArrayOutputStream.toByteArray())
-                                        .flip()
-
-                                    attachment.queue.add(buffer)
+                                    attachment.queue.add(outputMessage.toByteBuffer())
                                 }
 
                                 attachment.sizeBuffer.clear()

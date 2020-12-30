@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.InputStream
+import java.nio.ByteBuffer
 
 infix fun Message.sendTo(stream: DataOutputStream) {
     val byteArrayOutputStream = ByteArrayOutputStream()
@@ -20,4 +21,15 @@ fun receiveMessageFrom(stream: InputStream): Message {
 
     stream.read(bytes)
     return Message.parseFrom(bytes)
+}
+
+fun Message.toByteBuffer(): ByteBuffer {
+    val byteArrayOutputStream = ByteArrayOutputStream()
+    writeTo(byteArrayOutputStream)
+
+    return ByteBuffer
+        .allocate(Int.SIZE_BYTES + byteArrayOutputStream.size())
+        .putInt(byteArrayOutputStream.size())
+        .put(byteArrayOutputStream.toByteArray())
+        .flip()
 }
