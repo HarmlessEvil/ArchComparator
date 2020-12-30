@@ -23,7 +23,7 @@ fun runClient(dataSize: Int, delayBeforeNextMessage: Duration, messageCount: Int
         val outputStream = socket.getOutputStream()
         val dataOutputStream = DataOutputStream(outputStream)
 
-        for (i in 1..messageCount) {
+        repeat(messageCount) {
             val data = List(dataSize) { Random.nextInt() }
             val message = Message.newBuilder().addAllData(data).build()
 
