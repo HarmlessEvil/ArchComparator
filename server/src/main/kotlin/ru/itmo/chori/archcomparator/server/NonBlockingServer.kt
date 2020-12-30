@@ -89,14 +89,14 @@ class NonBlockingServer : Closeable {
                                 attachment.buffer.get(inputMessageBytes)
 
                                 val byteArrayInputStream = ByteArrayInputStream(inputMessageBytes)
-                                val inputMessage = Message.parseDelimitedFrom(byteArrayInputStream)
+                                val inputMessage = Message.parseFrom(byteArrayInputStream)
 
                                 threadPool.submit {
                                     val data = task(inputMessage.dataList)
 
                                     val outputMessage = Message.newBuilder().addAllData(data).build()
                                     val byteArrayOutputStream = ByteArrayOutputStream()
-                                    outputMessage.writeDelimitedTo(byteArrayOutputStream)
+                                    outputMessage.writeTo(byteArrayOutputStream)
 
                                     val buffer = ByteBuffer
                                         .allocate(Int.SIZE_BYTES + byteArrayOutputStream.size())

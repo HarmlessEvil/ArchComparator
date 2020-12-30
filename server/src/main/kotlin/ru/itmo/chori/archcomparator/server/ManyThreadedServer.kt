@@ -2,7 +2,11 @@ package ru.itmo.chori.archcomparator.server
 
 import ru.itmo.chori.archcomparator.Message
 import ru.itmo.chori.archcomparator.SERVER_PORT
-import java.io.*
+import ru.itmo.chori.archcomparator.receiveMessageFrom
+import ru.itmo.chori.archcomparator.sendTo
+import java.io.Closeable
+import java.io.DataOutputStream
+import java.io.EOFException
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
@@ -31,12 +35,10 @@ class ManyThreadedServer : Closeable {
             val sender = Executors.newSingleThreadExecutor()
             socket.use { socket ->
                 val inputStream = socket.getInputStream()
-                val dataInputStream = DataInputStream(inputStream)
 
                 while (isRunning) {
                     try {
-                        dataInputStream.readInt()
-                        val message = Message.parseDelimitedFrom(inputStream)
+                        val message = receiveMessageFrom(inputStream)
 
                         threadPool.submit {
                             val data = task(message.dataList)
@@ -55,11 +57,8 @@ class ManyThreadedServer : Closeable {
     private fun sendResponse(socket: Socket, message: Message) {
         val outputStream = socket.getOutputStream()
         val dataOutputStream = DataOutputStream(outputStream)
-        val byteArrayOutputStream = ByteArrayOutputStream()
-        message.writeDelimitedTo(byteArrayOutputStream)
 
-        dataOutputStream.writeInt(byteArrayOutputStream.size())
-        dataOutputStream.write(byteArrayOutputStream.toByteArray())
+        message sendTo dataOutputStream
     }
 
     /**
