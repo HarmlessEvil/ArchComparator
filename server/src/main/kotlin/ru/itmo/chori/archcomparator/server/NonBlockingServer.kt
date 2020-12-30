@@ -12,21 +12,21 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import kotlin.concurrent.thread
 
-private class Attachment {
-    enum class State {
-        ReadingSize,
-        ReadingMessage
+class NonBlockingServer : Closeable {
+    private class Attachment {
+        enum class State {
+            ReadingSize,
+            ReadingMessage
+        }
+
+        var state = State.ReadingSize
+
+        val sizeBuffer: ByteBuffer = ByteBuffer.allocate(Int.SIZE_BYTES)
+        lateinit var buffer: ByteBuffer
+
+        val queue = ConcurrentLinkedQueue<ByteBuffer>()
     }
 
-    var state = State.ReadingSize
-
-    val sizeBuffer: ByteBuffer = ByteBuffer.allocate(Int.SIZE_BYTES)
-    lateinit var buffer: ByteBuffer
-
-    val queue = ConcurrentLinkedQueue<ByteBuffer>()
-}
-
-class NonBlockingServer : Closeable {
     private val threadPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE)
 
     @Volatile
