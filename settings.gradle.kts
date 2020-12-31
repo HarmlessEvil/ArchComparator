@@ -11,4 +11,4 @@ buildscript {
     }
 }
 
-include("shared", "server", "client")
+include("shared", "server", "client", "gui")
