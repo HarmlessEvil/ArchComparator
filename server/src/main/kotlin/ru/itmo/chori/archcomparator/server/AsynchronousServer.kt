@@ -1,7 +1,6 @@
 package ru.itmo.chori.archcomparator.server
 
 import ru.itmo.chori.archcomparator.Message
-import ru.itmo.chori.archcomparator.SERVER_PORT
 import ru.itmo.chori.archcomparator.toByteBuffer
 import java.io.ByteArrayInputStream
 import java.net.InetSocketAddress
@@ -16,7 +15,7 @@ import java.util.concurrent.Executors
 import kotlin.concurrent.thread
 import kotlin.system.measureTimeMillis
 
-class AsynchronousServer : Server {
+class AsynchronousServer(override val port: Int, override val threadPoolSize: Int) : ServerWithStatistics {
     private class Attachment(val clientId: Long) {
         val sizeBuffer: ByteBuffer = ByteBuffer.allocate(Int.SIZE_BYTES)
         lateinit var buffer: ByteBuffer
@@ -25,10 +24,8 @@ class AsynchronousServer : Server {
     @Volatile
     private var isRunning = true
 
-    private val threadPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE)
-    private val serverSocketChannel = AsynchronousServerSocketChannel.open().also {
-        it.bind(InetSocketAddress(SERVER_PORT))
-    }
+    private val threadPool = Executors.newFixedThreadPool(threadPoolSize)
+    private val serverSocketChannel = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(port))
 
     private val acceptor = thread {
         var id: Long = 0
@@ -133,9 +130,9 @@ class AsynchronousServer : Server {
 }
 
 fun main() {
-    val server = AsynchronousServer()
+    val server = AsynchronousServer(port = 8080, threadPoolSize = 4)
     server.use {
-        println("Accepting connections on localhost:$SERVER_PORT")
+        println("Accepting connections on localhost:${it.port}")
         println("Press ENTER to stop")
 
         readLine()

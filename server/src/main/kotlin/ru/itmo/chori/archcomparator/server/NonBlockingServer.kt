@@ -1,10 +1,8 @@
 package ru.itmo.chori.archcomparator.server
 
 import ru.itmo.chori.archcomparator.Message
-import ru.itmo.chori.archcomparator.SERVER_PORT
 import ru.itmo.chori.archcomparator.toByteBuffer
 import java.io.ByteArrayInputStream
-import java.io.Closeable
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.*
@@ -14,7 +12,7 @@ import java.util.concurrent.Executors
 import kotlin.concurrent.thread
 import kotlin.system.measureTimeMillis
 
-class NonBlockingServer : Server {
+class NonBlockingServer(override val port: Int, override val threadPoolSize: Int) : ServerWithStatistics {
     private class Attachment(val clientId: Long) {
         enum class State {
             ReadingSize,
@@ -29,14 +27,12 @@ class NonBlockingServer : Server {
         val queue = ConcurrentLinkedQueue<ByteBuffer>()
     }
 
-    private val threadPool = Executors.newFixedThreadPool(THREAD_POOL_SIZE)
+    private val threadPool = Executors.newFixedThreadPool(threadPoolSize)
 
     @Volatile
     private var isRunning = true
 
-    private val serverSocketChannel = ServerSocketChannel.open().also {
-        it.bind(InetSocketAddress(SERVER_PORT))
-    }
+    private val serverSocketChannel = ServerSocketChannel.open().bind(InetSocketAddress(port))
     private val readSelector = Selector.open()
     private val writeSelector = Selector.open()
 
@@ -171,9 +167,9 @@ class NonBlockingServer : Server {
 }
 
 fun main() {
-    val server = NonBlockingServer()
+    val server = NonBlockingServer(port = 8080, threadPoolSize = 4)
     server.use {
-        println("Accepting connections on localhost:$SERVER_PORT")
+        println("Accepting connections on localhost:${it.port}")
         println("Press ENTER to stop")
 
         readLine()

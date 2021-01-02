@@ -1,7 +1,6 @@
 package ru.itmo.chori.archcomparator.client
 
 import ru.itmo.chori.archcomparator.Message
-import ru.itmo.chori.archcomparator.SERVER_PORT
 import ru.itmo.chori.archcomparator.receiveMessageFrom
 import ru.itmo.chori.archcomparator.sendTo
 import java.io.DataOutputStream
@@ -16,8 +15,8 @@ import kotlin.system.measureTimeMillis
 // X is messageCount
 
 // Client is stateless and can only perform one action, so it doesn't have to be a class
-fun runClient(dataSize: Int, delayBeforeNextMessage: Duration, messageCount: Int) {
-    Socket(InetAddress.getLocalHost(), SERVER_PORT).use { socket ->
+fun runClient(serverPort: Int, dataSize: Int, delayBeforeNextMessage: Duration, messageCount: Int) {
+    Socket(InetAddress.getLocalHost(), serverPort).use { socket ->
         val inputStream = socket.getInputStream()
 
         val outputStream = socket.getOutputStream()
@@ -35,14 +34,19 @@ fun runClient(dataSize: Int, delayBeforeNextMessage: Duration, messageCount: Int
     }
 }
 
-fun runClientAndMeasureTime(dataSize: Int, delayBeforeNextMessage: Duration, messageCount: Int): Duration {
+fun runClientAndMeasureTime(
+    serverPort: Int,
+    dataSize: Int,
+    delayBeforeNextMessage: Duration,
+    messageCount: Int
+): Duration {
     val totalTime = measureTimeMillis {
-        runClient(dataSize, delayBeforeNextMessage, messageCount)
+        runClient(serverPort, dataSize, delayBeforeNextMessage, messageCount)
     }
 
     return Duration.ofMillis(totalTime / messageCount)
 }
 
 fun main() {
-    println(runClientAndMeasureTime(100, Duration.ofMillis(100), 10))
+    println(runClientAndMeasureTime(8080, 100, Duration.ofMillis(100), 10))
 }

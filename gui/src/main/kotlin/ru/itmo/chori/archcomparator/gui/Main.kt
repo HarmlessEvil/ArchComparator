@@ -1,39 +1,12 @@
 package ru.itmo.chori.archcomparator.gui
 
-import javafx.beans.property.SimpleObjectProperty
-import javafx.collections.FXCollections
 import javafx.stage.Stage
 import tornadofx.*
 
 const val WINDOW_WIDTH = 500.0
 
-class Architecture(val name: String, val description: String) {
-    override fun toString(): String {
-        return name
-    }
-}
-
 class MainView : View("Architecture Comparator") {
-    private val architectures = FXCollections.observableArrayList(
-        Architecture(
-            "2 threads for each client",
-            "Server creates a separate thread for receiving queries and a separate thread for sending " +
-                    "responses for each client"
-        ),
-        Architecture(
-            "Non-blocking",
-            "Server has one thread with selector for receiving queries in non-blocking manner and one " +
-                    "thread with selector for sending responses"
-        ),
-        Architecture(
-            "Asynchronous",
-            "All reads and writes on server are implemented in asynchronous manner: it has some thread " +
-                    "pool, where id does all reads and writes. And after each (non-)successful operation, " +
-                    "corresponding callback is called"
-        )
-    )
-    private val selectedArchitecture = SimpleObjectProperty(architectures[0])
-    private val selectedArchitectureDescription = selectedArchitecture.stringBinding { it?.description }
+    private val settings = RunSettings()
 
     override val root = borderpane {
         top {
@@ -44,15 +17,83 @@ class MainView : View("Architecture Comparator") {
             form {
                 fieldset("Server architecture") {
                     field("Choose server architecture") {
-                        combobox(selectedArchitecture, architectures)
+                        combobox(settings.selectedArchitecture, settings.architectures)
                     }
 
-                    text(selectedArchitectureDescription) {
+                    text(settings.selectedArchitectureDescription) {
                         style {
                             wrappingWidth = WINDOW_WIDTH - 20.0
                         }
                     }
                 }
+
+                fieldset("Client settings") {
+                    field("Number of queries per client (X)") {
+                        textfield(settings.queriesPerClient) {
+                            filterInput {
+                                it.controlNewText.isInt()
+                            }
+                        }
+                    }
+
+                    field("Testing parameter") {
+                        combobox(settings.selectedTestingParameter, settings.testingParameters)
+                    }
+
+                    text(settings.selectedTestingParameterDescription) {
+                        style {
+                            wrappingWidth = WINDOW_WIDTH - 20.0
+                        }
+                    }
+                }
+
+                fieldset("Parameter configuration") {
+                    field("Min value") {
+                        textfield(settings.minParameterValue) {
+                            filterInput {
+                                it.controlNewText.isInt()
+                            }
+                        }
+                    }
+
+                    field("Max value") {
+                        textfield(settings.maxParameterValue) {
+                            filterInput {
+                                it.controlNewText.isInt()
+                            }
+                        }
+                    }
+
+                    field("Step") {
+                        textfield(settings.parameterStep) {
+                            filterInput {
+                                it.controlNewText.isInt()
+                            }
+                        }
+                    }
+                }
+
+                fieldset("Other settings") {
+                    field("Server port") {
+                        // format %d removes space as triplets separator, e.g. '8 080'
+                        textfield(settings.serverPort.asString("%d")) {
+                            filterInput {
+                                it.controlNewText.isInt()
+                            }
+                        }
+                    }
+
+                    field("Server thread pool size") {
+                        textfield(settings.serverThreadPoolSize) {
+                            filterInput {
+                                it.controlNewText.isInt()
+                            }
+                        }
+                    }
+                }
+
+                // TODO: Validate
+                // TODO: Run!
             }
         }
     }
@@ -62,7 +103,7 @@ class ArchitectureComparatorApp : App(MainView::class) {
     override fun start(stage: Stage) {
         with(stage) {
             maxWidth = WINDOW_WIDTH
-            isResizable = false
+            minWidth = WINDOW_WIDTH
 
             super.start(this)
         }

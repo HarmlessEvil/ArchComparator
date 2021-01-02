@@ -9,18 +9,25 @@ import java.time.Duration
  */
 interface Server: Closeable {
     /**
+     * Each server should have thread pool for running client tasks
+     */
+    val threadPoolSize: Int
+    val port: Int
+}
+
+interface ServerWithStatistics: Server {
+    /**
      * For each client: time that consumed each task
      */
     val tasksTime: Map<Long, List<Duration>>
 
     // TODO: Uncomment when remember, how to compute it
 //    val clientProcessTime: Map<Long, List<Duration>>
-
 }
 
 // Possible class cast exception left intentionally
 @Suppress("unchecked_cast")
-fun Server.storeTaskTimeForClient(clientId: Long, taskTime: Duration) {
+fun ServerWithStatistics.storeTaskTimeForClient(clientId: Long, taskTime: Duration) {
     val timeMap = tasksTime as MutableMap<Long, MutableList<Duration>>
 
     timeMap.putIfAbsent(clientId, emptyList<Duration>().toMutableList())
