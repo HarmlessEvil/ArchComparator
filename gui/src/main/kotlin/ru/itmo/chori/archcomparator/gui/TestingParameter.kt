@@ -1,6 +1,11 @@
 package ru.itmo.chori.archcomparator.gui
 
-internal sealed class TestingParameter(val name: String, val variable: String, val description: String) {
+sealed class TestingParameter(
+    val name: String,
+    val variable: String,
+    val description: String,
+    val allowsZero: Boolean = false
+) {
     override fun toString() = "$name ($variable)"
 }
 internal object ArraySize: TestingParameter(
@@ -19,5 +24,6 @@ internal object ClientDelay: TestingParameter(
     "Client delay",
     "Δ",
     "After client receives response from the server, it will wait Δ ms before sending the next " +
-            "message"
+            "message",
+    allowsZero = true
 )

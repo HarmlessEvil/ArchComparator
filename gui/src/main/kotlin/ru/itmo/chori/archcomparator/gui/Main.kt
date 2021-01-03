@@ -1,26 +1,32 @@
 package ru.itmo.chori.archcomparator.gui
 
+import javafx.scene.control.TextFormatter
 import javafx.stage.Stage
+import javafx.util.converter.NumberStringConverter
 import tornadofx.*
 
 const val WINDOW_WIDTH = 500.0
+const val WINDOW_HEIGHT = 800.0
 
 class MainView : View("Architecture Comparator") {
-    private val settings = RunSettings()
+    private val settings: RunSettingsModel by inject()
 
     override val root = borderpane {
         top {
-            label("ArchComparator")
+            imageview("/logo.png") {
+                isPreserveRatio = true
+                fitWidth = WINDOW_WIDTH
+            }
         }
 
         center {
             form {
                 fieldset("Server architecture") {
                     field("Choose server architecture") {
-                        combobox(settings.selectedArchitecture, settings.architectures)
+                        combobox(settings.architecture, RunSettings.architectures)
                     }
 
-                    text(settings.selectedArchitectureDescription) {
+                    text(settings.architecture.stringBinding { it?.description }) {
                         style {
                             wrappingWidth = WINDOW_WIDTH - 20.0
                         }
@@ -30,17 +36,29 @@ class MainView : View("Architecture Comparator") {
                 fieldset("Client settings") {
                     field("Number of queries per client (X)") {
                         textfield(settings.queriesPerClient) {
-                            filterInput {
-                                it.controlNewText.isInt()
+                            stripNonNumeric("")
+                            textFormatter = TextFormatter(
+                                NumberStringConverter("########"),
+                                settings.queriesPerClient.value
+                            )
+
+                            validator {
+                                if (it.isNullOrBlank())
+                                    return@validator error("This field is required")
+
+                                if (it.toInt() <= 0)
+                                    error("Number of clients should be greater than zero")
+                                else
+                                    null
                             }
                         }
                     }
 
                     field("Testing parameter") {
-                        combobox(settings.selectedTestingParameter, settings.testingParameters)
+                        combobox(settings.testingParameter, RunSettings.testingParameters)
                     }
 
-                    text(settings.selectedTestingParameterDescription) {
+                    text(settings.testingParameter.stringBinding { it?.description }) {
                         style {
                             wrappingWidth = WINDOW_WIDTH - 20.0
                         }
@@ -50,24 +68,82 @@ class MainView : View("Architecture Comparator") {
                 fieldset("Parameter configuration") {
                     field("Min value") {
                         textfield(settings.minParameterValue) {
-                            filterInput {
-                                it.controlNewText.isInt()
+                            stripNonNumeric("")
+                            textFormatter = TextFormatter(
+                                NumberStringConverter("########"),
+                                settings.minParameterValue.value
+                            )
+
+                            validator {
+                                if (it.isNullOrBlank())
+                                    return@validator error("This field is required")
+
+                                val name = "Minimal value of ${settings.testingParameter.value}"
+                                val intValue = it.toInt()
+
+                                if (settings.testingParameter.value.allowsZero) {
+                                    if (intValue < 0)
+                                        return@validator error("$name should be greater or equals to zero")
+                                } else {
+                                    if (intValue <= 0)
+                                        return@validator error("$name should be greater than zero")
+                                }
+
+                                if (intValue >= settings.maxParameterValue.value)
+                                    error("$name should be less than it's max value")
+                                else
+                                    null
                             }
                         }
                     }
 
                     field("Max value") {
                         textfield(settings.maxParameterValue) {
-                            filterInput {
-                                it.controlNewText.isInt()
+                            stripNonNumeric("")
+                            textFormatter = TextFormatter(
+                                NumberStringConverter("########"),
+                                settings.maxParameterValue.value
+                            )
+
+                            validator {
+                                if (it.isNullOrBlank())
+                                    return@validator error("This field is required")
+
+                                val name = "Maximal value of ${settings.testingParameter.value}"
+                                val intValue = it.toInt()
+
+                                if (settings.testingParameter.value.allowsZero) {
+                                    if (intValue < 0)
+                                        return@validator error("$name should be greater or equals to zero")
+                                } else {
+                                    if (intValue <= 0)
+                                        return@validator error("$name should be greater than zero")
+                                }
+
+                                if (intValue <= settings.minParameterValue.value)
+                                    error("$name should be greater than it's min value")
+                                else
+                                    null
                             }
                         }
                     }
 
                     field("Step") {
                         textfield(settings.parameterStep) {
-                            filterInput {
-                                it.controlNewText.isInt()
+                            stripNonNumeric("")
+                            textFormatter = TextFormatter(
+                                NumberStringConverter("########"),
+                                settings.parameterStep.value
+                            )
+
+                            validator {
+                                if (it.isNullOrBlank())
+                                    return@validator error("This field is required")
+
+                                if (it.toInt() <= 0)
+                                    error("Step should be greater than zero")
+                                else
+                                    null
                             }
                         }
                     }
@@ -75,25 +151,55 @@ class MainView : View("Architecture Comparator") {
 
                 fieldset("Other settings") {
                     field("Server port") {
-                        // format %d removes space as triplets separator, e.g. '8 080'
-                        textfield(settings.serverPort.asString("%d")) {
-                            filterInput {
-                                it.controlNewText.isInt()
+                        textfield(settings.serverPort) {
+                            stripNonNumeric("")
+                            textFormatter = TextFormatter(
+                                NumberStringConverter("########"),
+                                settings.serverPort.value
+                            )
+
+                            validator {
+                                if (it.isNullOrBlank())
+                                    return@validator error("This field is required")
+
+                                if (it.toInt() !in 0..65535)
+                                    error("Server port should be in [0..65535] range, inclusive")
+                                else
+                                    null
                             }
                         }
                     }
 
                     field("Server thread pool size") {
                         textfield(settings.serverThreadPoolSize) {
-                            filterInput {
-                                it.controlNewText.isInt()
+                            stripNonNumeric("")
+                            textFormatter = TextFormatter(
+                                NumberStringConverter("########"),
+                                settings.serverThreadPoolSize.value
+                            )
+
+                            validator {
+                                if (it.isNullOrBlank())
+                                    return@validator error("This field is required")
+
+                                if (it.toInt() <= 0)
+                                    error("Thread pool size should be greater than zero")
+                                else
+                                    null
                             }
                         }
                     }
                 }
 
-                // TODO: Validate
                 // TODO: Run!
+
+                buttonbar {
+                    button("Run!").action {
+                        settings.commit {
+                            println(settings)
+                        }
+                    }
+                }
             }
         }
     }
@@ -102,8 +208,9 @@ class MainView : View("Architecture Comparator") {
 class ArchitectureComparatorApp : App(MainView::class) {
     override fun start(stage: Stage) {
         with(stage) {
-            maxWidth = WINDOW_WIDTH
-            minWidth = WINDOW_WIDTH
+            width = WINDOW_WIDTH
+            height = WINDOW_HEIGHT
+            isResizable = false
 
             super.start(this)
         }

@@ -1,6 +1,6 @@
 package ru.itmo.chori.archcomparator.gui
 
-internal sealed class Architecture(val name: String, val description: String) {
+sealed class Architecture(val name: String, val description: String) {
     override fun toString() = name
 }
 internal object ManyThreadedArchitecture: Architecture(
@@ -16,6 +16,6 @@ internal object NonBlockingArchitecture: Architecture(
 internal object AsynchronousArchitecture: Architecture(
     "Asynchronous",
     "All reads and writes on server are implemented in asynchronous manner: it has some thread " +
-            "pool, where id does all reads and writes. And after each (non-)successful operation, " +
+            "pool, where it does all reads and writes. And after each (non-)successful operation, " +
             "corresponding callback is called"
 )
