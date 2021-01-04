@@ -14,7 +14,9 @@ import kotlin.concurrent.thread
 import kotlin.system.measureTimeMillis
 
 class ManyThreadedServer(override val port: Int, override val threadPoolSize: Int) : ServerWithStatistics {
-    private val threadPool = Executors.newFixedThreadPool(threadPoolSize)
+    private val threadPool = Executors.newFixedThreadPool(threadPoolSize) { runnable ->
+        thread(start = false, name = "2N-M server") { runnable.run() }
+    }
 
     @Volatile
     private var isRunning = true
@@ -35,32 +37,41 @@ class ManyThreadedServer(override val port: Int, override val threadPoolSize: In
         .toMutableMap()
 
     private fun acceptConnection(socket: Socket, id: Long) {
-        thread {
-            val sender = Executors.newSingleThreadExecutor()
-            socket.use { socket ->
-                val inputStream = socket.getInputStream()
-
-                while (isRunning) {
-                    try {
-                        val message = receiveMessageFrom(inputStream)
-
-                        threadPool.submit {
-                            val data: List<Int>
-                            val taskTime = measureTimeMillis {
-                                data = task(message.dataList)
-                            }
-
-                            storeTaskTimeForClient(id, Duration.ofMillis(taskTime))
-
-                            sender.submit { sendResponse(socket, Message.newBuilder().addAllData(data).build()) }
-                        }
-                    } catch (e: EOFException) { // will throw if all data consumed and client disconnected
-                        break
-                    }
-                }
+        thread(name = "acceptor") {
+            val sender = Executors.newSingleThreadExecutor { runnable ->
+                thread(start = false, name = "2N-M sender") { runnable.run() }
             }
 
-            sender.shutdown()
+            try {
+                socket.use { socket ->
+                    val inputStream = socket.getInputStream()
+
+                    while (isRunning) {
+                        try {
+                            val message = receiveMessageFrom(inputStream)
+
+                            if (!isRunning) {
+                                break
+                            }
+
+                            threadPool.submit {
+                                val data: List<Int>
+                                val taskTime = measureTimeMillis {
+                                    data = task(message.dataList)
+                                }
+
+                                storeTaskTimeForClient(id, Duration.ofMillis(taskTime))
+
+                                sender.submit { sendResponse(socket, Message.newBuilder().addAllData(data).build()) }
+                            }
+                        } catch (e: EOFException) { // will throw if all data consumed and client disconnected
+                            break
+                        }
+                    }
+                }
+            } finally {
+                sender.shutdown()
+            }
         }
     }
 

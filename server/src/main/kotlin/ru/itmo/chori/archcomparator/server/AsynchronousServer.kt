@@ -24,10 +24,12 @@ class AsynchronousServer(override val port: Int, override val threadPoolSize: In
     @Volatile
     private var isRunning = true
 
-    private val threadPool = Executors.newFixedThreadPool(threadPoolSize)
+    private val threadPool = Executors.newFixedThreadPool(threadPoolSize) { runnable ->
+        thread(start = false, name = "async server") { runnable.run() }
+    }
     private val serverSocketChannel = AsynchronousServerSocketChannel.open().bind(InetSocketAddress(port))
 
-    private val acceptor = thread {
+    private val acceptor = thread(name = "acceptor") {
         var id: Long = 0
         while (isRunning) {
             val future = serverSocketChannel.accept()
@@ -87,6 +89,10 @@ class AsynchronousServer(override val port: Int, override val threadPoolSize: In
 
                 val byteArrayInputStream = ByteArrayInputStream(bytes)
                 val inputMessage = Message.parseFrom(byteArrayInputStream)
+
+                if (!isRunning) {
+                    return
+                }
 
                 threadPool.submit {
                     val data: List<Int>

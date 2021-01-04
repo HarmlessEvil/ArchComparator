@@ -27,7 +27,9 @@ class NonBlockingServer(override val port: Int, override val threadPoolSize: Int
         val queue = ConcurrentLinkedQueue<ByteBuffer>()
     }
 
-    private val threadPool = Executors.newFixedThreadPool(threadPoolSize)
+    private val threadPool = Executors.newFixedThreadPool(threadPoolSize) { runnable ->
+        thread(start = false, name = "non-blocking server") { runnable.run() }
+    }
 
     @Volatile
     private var isRunning = true
@@ -59,7 +61,7 @@ class NonBlockingServer(override val port: Int, override val threadPoolSize: Int
     override val tasksTime: MutableMap<Long, MutableList<Duration>> = emptyMap<Long, MutableList<Duration>>()
         .toMutableMap()
 
-    private val reader = thread {
+    private val reader = thread(name = "reader") {
         while (isRunning) {
             try {
                 readSelector.select { key ->
@@ -104,6 +106,10 @@ class NonBlockingServer(override val port: Int, override val threadPoolSize: Int
                             val byteArrayInputStream = ByteArrayInputStream(inputMessageBytes)
                             val inputMessage = Message.parseFrom(byteArrayInputStream)
 
+                            if (!isRunning) {
+                                return@select
+                            }
+
                             threadPool.submit {
                                 val data: List<Int>
                                 val taskTime = measureTimeMillis {
@@ -128,7 +134,7 @@ class NonBlockingServer(override val port: Int, override val threadPoolSize: Int
         }
     }
 
-    private val writer = thread {
+    private val writer = thread(name = "writer") {
         while (isRunning) {
             try {
                 writeSelector.select { key ->

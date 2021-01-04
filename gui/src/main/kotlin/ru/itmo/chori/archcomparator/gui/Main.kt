@@ -1,12 +1,15 @@
 package ru.itmo.chori.archcomparator.gui
 
 import javafx.scene.control.TextFormatter
+import javafx.scene.input.KeyCode
+import javafx.scene.input.KeyCodeCombination
+import javafx.scene.input.KeyCombination
 import javafx.stage.Stage
 import javafx.util.converter.NumberStringConverter
 import tornadofx.*
 
 const val WINDOW_WIDTH = 500.0
-const val WINDOW_HEIGHT = 800.0
+const val WINDOW_HEIGHT = 900.0
 
 class MainView : View("Architecture Comparator") {
     private val settings: RunSettingsModel by inject()
@@ -149,6 +152,74 @@ class MainView : View("Architecture Comparator") {
                     }
                 }
 
+                fieldset("Constant parameters") {
+                    field(ArraySize.toString()) {
+                        textfield(settings.arraySize) {
+                            stripNonNumeric("")
+                            textFormatter = TextFormatter(
+                                NumberStringConverter("########"),
+                                settings.arraySize.value
+                            )
+
+                            validator {
+                                if (it.isNullOrBlank())
+                                    return@validator error("This field is required")
+
+                                if (it.toInt() <= 0)
+                                    error("Array size should be greater than zero")
+                                else
+                                    null
+                            }
+                        }
+
+                        removeWhen { settings.testingParameter.booleanBinding { it is ArraySize } }
+                    }
+
+                    field(ClientsCount.toString()) {
+                        textfield(settings.clientsCount) {
+                            stripNonNumeric("")
+                            textFormatter = TextFormatter(
+                                NumberStringConverter("########"),
+                                settings.clientsCount.value
+                            )
+
+                            validator {
+                                if (it.isNullOrBlank())
+                                    return@validator error("This field is required")
+
+                                if (it.toInt() <= 0)
+                                    error("Amount of clients should be greater than zero")
+                                else
+                                    null
+                            }
+                        }
+
+                        removeWhen { settings.testingParameter.booleanBinding { it is ClientsCount } }
+                    }
+
+                    field(ClientDelay.toString()) {
+                        textfield(settings.clientDelay) {
+                            stripNonNumeric("")
+                            textFormatter = TextFormatter(
+                                NumberStringConverter("########"),
+                                settings.clientDelay.value
+                            )
+
+                            validator {
+                                if (it.isNullOrBlank())
+                                    return@validator error("This field is required")
+
+                                if (it.toInt() < 0)
+                                    error("Client delay should not be negative")
+                                else
+                                    null
+                            }
+                        }
+
+                        removeWhen { settings.testingParameter.booleanBinding { it is ClientDelay } }
+                    }
+                }
+
                 fieldset("Other settings") {
                     field("Server port") {
                         textfield(settings.serverPort) {
@@ -191,13 +262,15 @@ class MainView : View("Architecture Comparator") {
                     }
                 }
 
-                // TODO: Run!
-
                 buttonbar {
-                    button("Run!").action {
-                        settings.commit {
-                            println(settings)
+                    button("Run!") {
+                        setOnAction {
+                            settings.commit {
+                                find<ExecutionView>().openModal(block = true)
+                            }
                         }
+
+                        shortcut(KeyCodeCombination(KeyCode.ENTER, KeyCombination.SHORTCUT_DOWN))
                     }
                 }
             }

@@ -22,10 +22,13 @@ class RunSettings {
     val queriesPerClient = SimpleIntegerProperty(this, "queries per client", 100)
 
     val selectedTestingParameter = SimpleObjectProperty(this, "testing parameter", testingParameters[0])
-
     val minParameterValue = SimpleIntegerProperty()
     val maxParameterValue = SimpleIntegerProperty()
     val parameterStep = SimpleIntegerProperty()
+
+    val arraySize = SimpleIntegerProperty(this, "array size", 100)
+    val clientsCount = SimpleIntegerProperty(this, "clients count", 10)
+    val clientDelay = SimpleIntegerProperty(this, "client delay", 100)
 
     val serverPort = SimpleIntegerProperty(this, "server port", 8080)
     val serverThreadPoolSize = SimpleIntegerProperty(this, "server thread pool size", 4)
@@ -38,6 +41,9 @@ class RunSettingsModel(settings: RunSettings? = RunSettings()) : ItemViewModel<R
     val minParameterValue = bind(RunSettings::minParameterValue)
     val maxParameterValue = bind(RunSettings::maxParameterValue)
     val parameterStep = bind(RunSettings::parameterStep)
+    val arraySize = bind(RunSettings::arraySize)
+    val clientsCount = bind(RunSettings::clientsCount)
+    val clientDelay = bind(RunSettings::clientDelay)
     val serverPort = bind(RunSettings::serverPort)
     val serverThreadPoolSize = bind(RunSettings::serverThreadPoolSize)
 
@@ -49,6 +55,9 @@ class RunSettingsModel(settings: RunSettings? = RunSettings()) : ItemViewModel<R
                 "minParameterValue=${minParameterValue.get()}, " +
                 "maxParameterValue=${maxParameterValue.get()}, " +
                 "parameterStep=${parameterStep.get()}, " +
+                "arraySize=${arraySize.get()}, " +
+                "clientsCount=${clientsCount.get()}, " +
+                "clientDelay=${clientDelay.get()}, " +
                 "serverPort=${serverPort.get()}, " +
                 "serverThreadPoolSize=${serverThreadPoolSize.get()}" +
                 ")"

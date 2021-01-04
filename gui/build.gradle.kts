@@ -15,5 +15,8 @@ compileKotlin.kotlinOptions {
 }
 
 dependencies {
+    implementation(project(":server"))
+    implementation(project(":client"))
+
     implementation("no.tornado:tornadofx:1.7.20")
 }
