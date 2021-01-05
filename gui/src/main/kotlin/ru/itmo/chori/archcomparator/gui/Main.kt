@@ -266,7 +266,7 @@ class MainView : View("Architecture Comparator") {
                     button("Run!") {
                         setOnAction {
                             settings.commit {
-                                find<ExecutionView>().openModal(block = true)
+                                find<ExecutionView>().openModal(block = true, resizable = false)
                             }
                         }
 

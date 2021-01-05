@@ -74,6 +74,7 @@ class ExecutionView : Fragment("Architecture Comparator – Executing...") {
                 }
 
                 println(server.tasksTime)
+                println()
                 runLater { progress.set((i + 1).toDouble() / totalSteps) }
             }
         } catch (e: InterruptedException) {
