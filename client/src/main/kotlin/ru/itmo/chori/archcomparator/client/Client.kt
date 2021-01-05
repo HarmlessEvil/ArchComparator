@@ -48,5 +48,5 @@ fun runClientAndMeasureTime(
 }
 
 fun main() {
-    println(runClientAndMeasureTime(8080, 100, Duration.ofMillis(100), 10))
+    println(runClientAndMeasureTime(8080, 5000, Duration.ofMillis(100), 10))
 }

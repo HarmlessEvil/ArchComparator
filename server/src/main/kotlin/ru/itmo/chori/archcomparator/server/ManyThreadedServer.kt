@@ -57,7 +57,7 @@ class ManyThreadedServer(override val port: Int, override val threadPoolSize: In
                             threadPool.submit {
                                 val data: List<Int>
                                 val taskTime = measureTimeMillis {
-                                    data = task(message.dataList)
+                                    data = task(message.dataList.toMutableList())
                                 }
 
                                 storeTaskTimeForClient(id, Duration.ofMillis(taskTime))

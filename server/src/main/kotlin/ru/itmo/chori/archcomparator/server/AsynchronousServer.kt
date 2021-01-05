@@ -97,7 +97,7 @@ class AsynchronousServer(override val port: Int, override val threadPoolSize: In
                 threadPool.submit {
                     val data: List<Int>
                     val taskTime = measureTimeMillis {
-                        data = task(inputMessage.dataList)
+                        data = task(inputMessage.dataList.toMutableList())
                     }
 
                     storeTaskTimeForClient(attachment.clientId, Duration.ofMillis(taskTime))
