@@ -64,8 +64,11 @@ class ExecutionView : Fragment("Architecture Comparator – Executing...") {
                             })
                         }
 
-                        val clientMeasuredTimes = clientMeasuredTimeFutures.map { it.get() }
-                        println(clientMeasuredTimes)
+                        val clientMeasuredTimes = clientMeasuredTimeFutures.map {
+                            it.get().toMillis()
+                        }.joinToString(";")
+
+                        println("Client measured times: $clientMeasuredTimes")
                     }
                 } catch (e: RejectedExecutionException) {
                     if (!isClosed) {
@@ -73,7 +76,11 @@ class ExecutionView : Fragment("Architecture Comparator – Executing...") {
                     }
                 }
 
-                println(server.tasksTime)
+                val tasksTime = server.tasksTime.values.map {
+                        duration -> duration.map { it.toMillis() }.average()
+                }.joinToString(";", postfix = "\n")
+
+                println("Tasks time: $tasksTime")
                 println()
                 runLater { progress.set((i + 1).toDouble() / totalSteps) }
             }

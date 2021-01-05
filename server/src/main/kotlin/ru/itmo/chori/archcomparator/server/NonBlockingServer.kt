@@ -10,7 +10,7 @@ import java.time.Duration
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import kotlin.concurrent.thread
-import kotlin.system.measureTimeMillis
+import kotlin.system.measureNanoTime
 
 class NonBlockingServer(override val port: Int, override val threadPoolSize: Int) : ServerWithStatistics {
     private class Attachment(val clientId: Long) {
@@ -112,11 +112,11 @@ class NonBlockingServer(override val port: Int, override val threadPoolSize: Int
 
                             threadPool.submit {
                                 val data: List<Int>
-                                val taskTime = measureTimeMillis {
+                                val taskTime = measureNanoTime {
                                     data = task(inputMessage.dataList.toMutableList())
                                 }
 
-                                storeTaskTimeForClient(attachment.clientId, Duration.ofMillis(taskTime))
+                                storeTaskTimeForClient(attachment.clientId, Duration.ofNanos(taskTime))
                                 val outputMessage = Message.newBuilder().addAllData(data).build()
 
                                 attachment.queue.add(outputMessage.toByteBuffer())

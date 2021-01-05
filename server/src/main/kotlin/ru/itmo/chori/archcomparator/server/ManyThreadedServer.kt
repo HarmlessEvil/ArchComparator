@@ -11,7 +11,7 @@ import java.net.SocketException
 import java.time.Duration
 import java.util.concurrent.Executors
 import kotlin.concurrent.thread
-import kotlin.system.measureTimeMillis
+import kotlin.system.measureNanoTime
 
 class ManyThreadedServer(override val port: Int, override val threadPoolSize: Int) : ServerWithStatistics {
     private val threadPool = Executors.newFixedThreadPool(threadPoolSize) { runnable ->
@@ -56,11 +56,11 @@ class ManyThreadedServer(override val port: Int, override val threadPoolSize: In
 
                             threadPool.submit {
                                 val data: List<Int>
-                                val taskTime = measureTimeMillis {
+                                val taskTime = measureNanoTime {
                                     data = task(message.dataList.toMutableList())
                                 }
 
-                                storeTaskTimeForClient(id, Duration.ofMillis(taskTime))
+                                storeTaskTimeForClient(id, Duration.ofNanos(taskTime))
 
                                 sender.submit { sendResponse(socket, Message.newBuilder().addAllData(data).build()) }
                             }

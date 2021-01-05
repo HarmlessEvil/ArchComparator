@@ -8,7 +8,7 @@ import java.net.InetAddress
 import java.net.Socket
 import java.time.Duration
 import kotlin.random.Random
-import kotlin.system.measureTimeMillis
+import kotlin.system.measureNanoTime
 
 // N is dataSize
 // 𝚫 is delayBeforeNextMessage
@@ -23,6 +23,10 @@ fun runClient(serverPort: Int, dataSize: Int, delayBeforeNextMessage: Duration, 
         val dataOutputStream = DataOutputStream(outputStream)
 
         repeat(messageCount) {
+            if (Thread.interrupted()) {
+                return
+            }
+
             val data = List(dataSize) { Random.nextInt() }
             val message = Message.newBuilder().addAllData(data).build()
 
@@ -40,11 +44,11 @@ fun runClientAndMeasureTime(
     delayBeforeNextMessage: Duration,
     messageCount: Int
 ): Duration {
-    val totalTime = measureTimeMillis {
+    val totalTime = measureNanoTime {
         runClient(serverPort, dataSize, delayBeforeNextMessage, messageCount)
     }
 
-    return Duration.ofMillis(totalTime / messageCount)
+    return Duration.ofNanos(totalTime / messageCount)
 }
 
 fun main() {

@@ -13,7 +13,7 @@ import java.time.Duration
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import kotlin.concurrent.thread
-import kotlin.system.measureTimeMillis
+import kotlin.system.measureNanoTime
 
 class AsynchronousServer(override val port: Int, override val threadPoolSize: Int) : ServerWithStatistics {
     private class Attachment(val clientId: Long) {
@@ -96,11 +96,11 @@ class AsynchronousServer(override val port: Int, override val threadPoolSize: In
 
                 threadPool.submit {
                     val data: List<Int>
-                    val taskTime = measureTimeMillis {
+                    val taskTime = measureNanoTime {
                         data = task(inputMessage.dataList.toMutableList())
                     }
 
-                    storeTaskTimeForClient(attachment.clientId, Duration.ofMillis(taskTime))
+                    storeTaskTimeForClient(attachment.clientId, Duration.ofNanos(taskTime))
                     val outputMessage = Message.newBuilder().addAllData(data).build()
 
                     sendResponse(socketChannel, outputMessage.toByteBuffer(), attachment.clientId)
